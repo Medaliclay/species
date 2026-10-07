@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#123524" />
+<title>Species Lens · BioCLIP 2 test</title>
+<meta name="description" content="Point your camera at a plant, animal or fungus. BioCLIP 2 identifies it; GBIF, iNaturalist and Wikipedia supply the science." />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔬</text></svg>" />
+<style>
+:root{
+  --bg:#f3f5ef; --surface:#ffffff; --surface-2:#eef2ea; --ink:#14201a; --muted:#5b6b61; --line:#dbe2d6;
+  --brand:#1f7a4d; --brand-ink:#ffffff; --brand-soft:#dff0e6; --accent:#e0a526;
+  --warn:#b4531a; --warn-soft:#fbe9dc; --danger:#b42318; --danger-soft:#fde4e1;
+  --shadow:0 1px 2px rgba(20,32,26,.06),0 8px 24px rgba(20,32,26,.06);
+  --radius:20px;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0c120f; --surface:#151d18; --surface-2:#1b2520; --ink:#e7efe9; --muted:#97a89d; --line:#26322b;
+  --brand:#4cc38a; --brand-ink:#06140c; --brand-soft:#173527; --accent:#f0bf4c;
+  --warn:#f29b5c; --warn-soft:#3a2416; --danger:#ff8a7a; --danger-soft:#3b1a16;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit}
+.wrap{max-width:760px;margin:0 auto;padding:16px 16px 80px}
+header{display:flex;align-items:center;gap:12px;padding:8px 0 18px}
+.logo{width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#1f7a4d,#5fbf7f);display:grid;place-items:center;font-size:24px;flex:none}
+header h1{font-size:1.35rem;margin:0;letter-spacing:-.01em}
+header p{margin:0;color:var(--muted);font-size:.86rem}
+.status{margin-left:auto;font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:6px;white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--line)}
+.dot.ok{background:#2fb36b}.dot.busy{background:var(--accent);animation:pulse 1s infinite}.dot.err{background:var(--danger)}
+@keyframes pulse{50%{opacity:.35}}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.card + .card{margin-top:16px}
+.pad{padding:18px}
+
+/* camera */
+.stage{position:relative;aspect-ratio:4/3;background:#0b0f0d;display:grid;place-items:center;overflow:hidden}
+.stage video,.stage img.shot{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.stage .hint{color:#cfe3d6;text-align:center;padding:24px;max-width:340px;font-size:.95rem}
+.stage .hint b{display:block;font-size:2.2rem;margin-bottom:6px}
+.reticle{position:absolute;inset:14%;border-radius:24px;pointer-events:none;
+  background:
+   linear-gradient(#fff,#fff) top left/28px 3px no-repeat,linear-gradient(#fff,#fff) top left/3px 28px no-repeat,
+   linear-gradient(#fff,#fff) top right/28px 3px no-repeat,linear-gradient(#fff,#fff) top right/3px 28px no-repeat,
+   linear-gradient(#fff,#fff) bottom left/28px 3px no-repeat,linear-gradient(#fff,#fff) bottom left/3px 28px no-repeat,
+   linear-gradient(#fff,#fff) bottom right/28px 3px no-repeat,linear-gradient(#fff,#fff) bottom right/3px 28px no-repeat;opacity:.75}
+.scan{position:absolute;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,#5fe39b,transparent);box-shadow:0 0 18px #5fe39b;top:0;animation:scan 1.6s ease-in-out infinite alternate}
+@keyframes scan{to{top:calc(100% - 3px)}}
+.controls{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px}
+.icon-btn{width:48px;height:48px;border-radius:50%;border:1px solid var(--line);background:var(--surface-2);display:grid;place-items:center;cursor:pointer;font-size:20px}
+.icon-btn:disabled{opacity:.4;cursor:not-allowed}
+.shutter{width:74px;height:74px;border-radius:50%;border:4px solid var(--brand);background:var(--surface);cursor:pointer;display:grid;place-items:center;transition:transform .1s}
+.shutter::after{content:"";width:56px;height:56px;border-radius:50%;background:var(--brand)}
+.shutter:active{transform:scale(.94)}
+.shutter.go::after{content:"Identify";width:auto;height:auto;background:none;color:var(--brand);font-weight:800;font-size:.8rem}
+.shutter:disabled{opacity:.5;cursor:wait}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.label{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin:0 0 8px}
+.chip{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:6px 12px 6px 6px;display:inline-flex;gap:8px;align-items:center;cursor:pointer;font-size:.86rem}
+.chip img{width:26px;height:26px;border-radius:50%;object-fit:cover}
+.chip:hover{border-color:var(--brand)}
+
+/* progress */
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.steps li{display:flex;gap:10px;align-items:center;color:var(--muted)}
+.steps li .s{width:22px;height:22px;border-radius:50%;border:2px solid var(--line);flex:none;display:grid;place-items:center;font-size:12px}
+.steps li.active{color:var(--ink);font-weight:600}
+.steps li.active .s{border-color:var(--brand);border-top-color:transparent;animation:spin .8s linear infinite}
+.steps li.done .s{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.steps li.done .s::after{content:"✓"}
+@keyframes spin{to{transform:rotate(360deg)}}
+.err{background:var(--danger-soft);color:var(--danger);border-radius:14px;padding:12px 14px;font-weight:600}
+
+/* result */
+.hero{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--line)}
+.hero figure{margin:0;position:relative;aspect-ratio:1;background:var(--surface-2)}
+.hero img{width:100%;height:100%;object-fit:cover;display:block}
+.hero figcaption{position:absolute;left:8px;bottom:8px;background:rgba(0,0,0,.6);color:#fff;font-size:.72rem;padding:3px 8px;border-radius:999px}
+.title{display:flex;gap:16px;align-items:center}
+.sci{font-style:italic;font-weight:800;font-size:1.65rem;line-height:1.15;margin:0;letter-spacing:-.01em}
+.common{color:var(--muted);margin:4px 0 0;font-size:1.02rem}
+.ring{flex:none;position:relative;width:76px;height:76px}
+.ring svg{transform:rotate(-90deg)}
+.ring span{position:absolute;inset:0;display:grid;place-items:center;font-weight:800;font-size:1.05rem}
+.ring small{position:absolute;bottom:-18px;left:0;right:0;text-align:center;font-size:.68rem;color:var(--muted)}
+.badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.badge{font-size:.76rem;font-weight:700;padding:4px 10px;border-radius:999px;background:var(--brand-soft);color:var(--brand)}
+.badge.warn{background:var(--warn-soft);color:var(--warn)}
+.badge.danger{background:var(--danger-soft);color:var(--danger)}
+.section{border-top:1px solid var(--line);padding:16px 18px}
+.tax{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.tax .t{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:4px 10px;font-size:.82rem}
+.tax .t small{display:block;font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.tax .arrow{color:var(--muted);font-size:.8rem}
+.tax .t.last{border-color:var(--brand);background:var(--brand-soft)}
+.bars{display:grid;gap:8px}
+.bar{display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-size:.88rem}
+.bar .track{grid-column:1/-1;height:8px;border-radius:99px;background:var(--surface-2);overflow:hidden}
+.bar .fill{height:100%;background:var(--brand);border-radius:99px;transition:width .6s}
+.bar:not(:first-child) .fill{background:color-mix(in srgb,var(--brand) 45%,var(--line))}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stat{background:var(--surface-2);border-radius:14px;padding:12px}
+.stat b{display:block;font-size:1.25rem;letter-spacing:-.01em}
+.stat span{font-size:.75rem;color:var(--muted)}
+.countries{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.countries span{font-size:.8rem;background:var(--surface-2);border-radius:999px;padding:3px 10px}
+.desc{margin:0;color:var(--ink)}
+.links{display:flex;gap:8px;flex-wrap:wrap}
+.links a{color:var(--brand);font-weight:700;text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:.88rem}
+.links a:hover{border-color:var(--brand)}
+.foot{font-size:.74rem;color:var(--muted)}
+.history{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px}
+.history button{border:0;background:none;padding:0;cursor:pointer;text-align:left;flex:none;width:92px}
+.history img{width:92px;height:92px;object-fit:cover;border-radius:14px;display:block;border:1px solid var(--line)}
+.history i{display:block;font-size:.72rem;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+footer{text-align:center;color:var(--muted);font-size:.78rem;margin-top:28px}
+footer a{color:inherit}
+[hidden]{display:none!important}
+@media (max-width:480px){.sci{font-size:1.35rem}.stats{grid-template-columns:1fr 1fr}.stats .stat:last-child{grid-column:1/-1}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo" aria-hidden="true">🔬</div>
+    <div>
+      <h1>Species Lens</h1>
+      <p>BioCLIP 2 · ~950,000 species · test platform</p>
+    </div>
+    <div class="status" id="status"><span class="dot" id="dot"></span><span id="statusText">Model idle</span></div>
+  </header>
+
+  <!-- 1. CAMERA -->
+  <section class="card" id="cameraCard">
+    <div class="stage" id="stage">
+      <video id="video" playsinline muted hidden></video>
+      <img id="shot" class="shot" alt="Your photo" hidden />
+      <div class="reticle" id="reticle" hidden></div>
+      <div class="scan" id="scan" hidden></div>
+      <div class="hint" id="hint"><b>📷</b>Tap <strong>Start camera</strong>, or upload a photo, or try a sample below.</div>
+    </div>
+    <div class="controls">
+      <button class="icon-btn" id="uploadBtn" title="Upload a photo" aria-label="Upload a photo">🖼️</button>
+      <input type="file" id="file" accept="image/*" hidden />
+      <button class="shutter" id="shutter" aria-label="Start camera"></button>
+      <button class="icon-btn" id="flipBtn" title="Switch camera" aria-label="Switch camera" disabled>🔄</button>
+    </div>
+    <div class="pad" style="padding-top:0">
+      <p class="label">No camera? Try a sample</p>
+      <div class="row" id="samples"></div>
+    </div>
+  </section>
+
+  <!-- 2. PROGRESS -->
+  <section class="card pad" id="progressCard" hidden>
+    <ol class="steps" id="steps">
+      <li data-k="connect"><span class="s"></span>Connecting to BioCLIP 2</li>
+      <li data-k="model"><span class="s"></span>Comparing your photo with the Tree of Life</li>
+      <li data-k="facts"><span class="s"></span>Fetching scientific data (GBIF · iNaturalist · Wikipedia)</li>
+    </ol>
+    <p class="foot" id="progressNote" style="margin:12px 0 0">The first identification can take up to a minute if the model is waking up.</p>
+  </section>
+
+  <!-- 3. RESULT -->
+  <section class="card" id="resultCard" hidden></section>
+
+  <!-- 4. HISTORY -->
+  <section class="card pad" id="historyCard" hidden>
+    <p class="label">This session</p>
+    <div class="history" id="history"></div>
+  </section>
+
+  <footer>
+    Model: <a href="https://huggingface.co/imageomics/bioclip-2" target="_blank" rel="noopener">BioCLIP 2</a> (Imageomics Institute) ·
+    Data: <a href="https://www.gbif.org" target="_blank" rel="noopener">GBIF</a>, <a href="https://www.inaturalist.org" target="_blank" rel="noopener">iNaturalist</a>, <a href="https://www.wikipedia.org" target="_blank" rel="noopener">Wikipedia</a><br/>
+    Built by the <b>Vibe with AI</b> studio · Photos are sent to the BioCLIP 2 demo server for identification only.
+  </footer>
+</div>
+
+<script type="module">
+/* ============================== CONFIG ============================== */
+// Which Gradio Space runs BioCLIP 2. Override with ?space=your-name/your-space
+const SPACE = new URLSearchParams(location.search).get("space") || "imageomics/bioclip-2-demo";
+const GRADIO = "https://cdn.jsdelivr.net/npm/@gradio/client@2.7.1/dist/browser.js";
+const LOW_CONFIDENCE = 0.35; // below this we fall back to the genus
+const EX = (f) => `https://huggingface.co/spaces/imageomics/bioclip-2-demo/resolve/main/examples/${f}`;
+const SAMPLES = [
+  ["Monarch", "monarch.jpg"], ["Viceroy", "viceroy.jpg"], ["Cheetah", "cheetah.jpg"],
+  ["Leopard", "leopard.jpg"], ["Saguaro", "Carnegiea-gigantea.png"], ["Oryx", "Bovidae-Oryx.jpg"],
+  ["Reef shark", "Carcharhinus-melanopterus.jpg"], ["Fungus", "Cortinarius-austroalbidus.jpg"],
+];
+const RANKS = ["kingdom", "phylum", "class", "order", "family", "genus"];
+
+/* ============================== STATE / DOM ============================== */
+const $ = (id) => document.getElementById(id);
+let stream = null, facing = "environment", photoBlob = null, photoURL = null, client = null, busy = false;
+const history = [];
+
+/* ============================== CAMERA ============================== */
+async function startCamera() {
+  if (!navigator.mediaDevices?.getUserMedia) return showError("This browser can't open the camera — use the upload button instead.");
+  try {
+    stopCamera();
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: facing }, width: { ideal: 1920 } }, audio: false });
+    const v = $("video");
+    v.srcObject = stream; await v.play();
+    show("video"); hide("shot"); hide("hint"); show("reticle");
+    $("flipBtn").disabled = false;
+    setShutter("capture");
+  } catch (e) {
+    showError(e.name === "NotAllowedError" ? "Camera permission was blocked. Allow it in the browser, or upload a photo." : "Could not open the camera: " + e.message);
+  }
+}
+function stopCamera() { stream?.getTracks().forEach((t) => t.stop()); stream = null; }
+
+function capture() {
+  const v = $("video");
+  const c = document.createElement("canvas");
+  const s = Math.min(1, 1024 / Math.max(v.videoWidth, v.videoHeight)); // the model only needs ~224 px
+  c.width = Math.round(v.videoWidth * s); c.height = Math.round(v.videoHeight * s);
+  c.getContext("2d").drawImage(v, 0, 0, c.width, c.height);
+  c.toBlob((b) => { stopCamera(); setPhoto(b); identify(); }, "image/jpeg", 0.9);
+}
+
+async function setPhoto(blob) {
+  photoBlob = blob;
+  if (photoURL) URL.revokeObjectURL(photoURL);
+  photoURL = URL.createObjectURL(blob);
+  $("shot").src = photoURL;
+  show("shot"); hide("video"); hide("hint"); hide("reticle");
+  $("flipBtn").disabled = true;
+  setShutter("retake");
+}
+
+async function shrink(file) {
+  let bmp;
+  try { bmp = await createImageBitmap(file, { imageOrientation: "from-image" }); }
+  catch { bmp = await createImageBitmap(file); }
+  const s = Math.min(1, 1024 / Math.max(bmp.width, bmp.height));
+  const c = document.createElement("canvas");
+  c.width = Math.round(bmp.width * s); c.height = Math.round(bmp.height * s);
+  c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+  return new Promise((r) => c.toBlob(r, "image/jpeg", 0.9));
+}
+
+let shutterMode = "start";
+function setShutter(mode) {
+  shutterMode = mode;
+  const b = $("shutter");
+  b.classList.toggle("go", false);
+  b.setAttribute("aria-label", { start: "Start camera", capture: "Take photo", retake: "Take another photo" }[mode]);
+}
+$("shutter").onclick = () => {
+  if (busy) return;
+  if (shutterMode === "capture") capture();
+  else startCamera();
+};
+$("flipBtn").onclick = () => { facing = facing === "environment" ? "user" : "environment"; startCamera(); };
+$("uploadBtn").onclick = () => $("file").click();
+$("file").onchange = async (e) => {
+  const f = e.target.files[0]; e.target.value = "";
+  if (!f) return;
+  stopCamera(); await setPhoto(await shrink(f)); identify();
+};
+
+// sample chips
+for (const [name, file] of SAMPLES) {
+  const b = document.createElement("button");
+  b.className = "chip";
+  b.innerHTML = `<img src="${EX(file)}" alt="" loading="lazy">${name}`;
+  b.onclick = async () => {
+    if (busy) return;
+    stopCamera();
+    try { await setPhoto(await (await fetch(EX(file))).blob()); identify(); }
+    catch { showError("Couldn't download the sample photo."); }
+  };
+  $("samples").append(b);
+}
+
+/* ============================== BIOCLIP 2 ============================== */
+async function getClient() {
+  if (client) return client;
+  const { Client } = await import(GRADIO);
+  client = await Client.connect(SPACE);
+  return client;
+}
+
+// Gradio label like "Animalia Arthropoda Insecta Lepidoptera Nymphalidae Danaus plexippus (Monarch)"
+function parseLabel(label, confidence) {
+  const m = String(label).match(/^(.*?)\s*(?:\(([^)]*)\))?\s*$/);
+  const words = m[1].trim().split(/\s+/);
+  const common = (m[2] || "").trim();
+  const out = { score: confidence, common };
+  if (words.length >= 7) {
+    RANKS.forEach((r, i) => (out[r] = words[i]));
+    out.species = `${words[5]} ${words.slice(6).join(" ")}`;
+  } else {
+    out.species = words.slice(-2).join(" ");
+    out.genus = words.length >= 2 ? words[words.length - 2] : words[0];
+  }
+  return out;
+}
+
+async function identify() {
+  if (!photoBlob || busy) return;
+  busy = true; $("shutter").disabled = true;
+  hide("resultCard"); $("resultCard").innerHTML = "";
+  show("progressCard"); show("scan");
+  step("connect"); setStatus("busy", "Working…");
+  try {
+    const app = await getClient();
+    step("model");
+    const t0 = performance.now();
+    const { handle_file } = await import(GRADIO);
+    const res = await app.predict("/lambda", { img: handle_file(photoBlob), rank: "Species" });
+    const ms = Math.round(performance.now() - t0);
+    const [labelData, sample] = res.data;
+    const candidates = (labelData?.confidences || []).map((c) => parseLabel(c.label, c.confidence));
+    if (!candidates.length) throw new Error("BioCLIP 2 returned no prediction");
+
+    // Decide species vs genus (be honest when unsure)
+    const top = candidates[0];
+    const genusScore = candidates.filter((c) => c.genus === top.genus).reduce((s, c) => s + c.score, 0);
+    const confident = top.score >= LOW_CONFIDENCE;
+    const name = confident ? top.species : top.genus;
+    const rank = confident ? "species" : "genus";
+
+    step("facts");
+    const facts = await getFacts(name, rank, top.kingdom);
+    step("done");
+    render({ name, rank, confident, confidence: confident ? top.score : genusScore, top, candidates, facts,
+             sampleUrl: sample?.url || null, ms });
+    addHistory(name, top.common);
+    setStatus("ok", "Model awake");
+  } catch (e) {
+    console.error(e);
+    client = null; // reconnect next time
+    setStatus("err", "Error");
+    showError(friendly(e));
+  } finally {
+    busy = false; $("shutter").disabled = false; hide("scan");
+    setTimeout(() => hide("progressCard"), 400);
+  }
+}
+
+function friendly(e) {
+  const m = String(e?.message || e);
+  if (/queue|full|429/i.test(m)) return "The BioCLIP 2 server is busy right now — wait a few seconds and try again.";
+  if (/sleep|paused|building|503/i.test(m)) return "The BioCLIP 2 server is waking up. Try again in about a minute.";
+  if (/fetch|network/i.test(m)) return "Network problem reaching BioCLIP 2. Check your connection and try again.";
+  return "Something went wrong: " + m;
+}
+
+/* ============================== SCIENTIFIC DATA ============================== */
+async function j(url) {
+  try { const r = await fetch(url, { headers: { accept: "application/json" } }); return r.ok ? await r.json() : null; }
+  catch { return null; }
+}
+const enc = encodeURIComponent;
+
+async function getFacts(name, rank, kingdom) {
+  const match = await j(`https://api.gbif.org/v1/species/match?name=${enc(name)}&rank=${rank.toUpperCase()}${kingdom ? "&kingdom=" + enc(kingdom) : ""}`);
+  const key = match?.usageKey && match.matchType !== "NONE" ? (match.acceptedUsageKey || match.usageKey) : null;
+  const [iucn, occ, saudi, inat, wiki] = await Promise.all([
+    key ? j(`https://api.gbif.org/v1/species/${key}/iucnRedListCategory`) : null,
+    key ? j(`https://api.gbif.org/v1/occurrence/search?taxonKey=${key}&limit=0&facet=country&facetLimit=6`) : null,
+    key ? j(`https://api.gbif.org/v1/occurrence/search?taxonKey=${key}&country=SA&limit=0`) : null,
+    j(`https://api.inaturalist.org/v1/taxa?q=${enc(name)}&rank=${rank}&per_page=1`),
+    j(`https://en.wikipedia.org/api/rest_v1/page/summary/${enc(name.replace(/ /g, "_"))}`),
+  ]);
+  const t = inat?.results?.[0];
+  return {
+    gbif: key ? {
+      key, url: `https://www.gbif.org/species/${key}`, scientificName: match.scientificName,
+      taxonomy: Object.fromEntries([...RANKS, "species"].filter((r) => match[r]).map((r) => [r, match[r]])),
+      records: occ?.count ?? null, saudi: saudi?.count ?? null,
+      countries: occ?.facets?.[0]?.counts || [],
+    } : null,
+    iucn: iucn?.category ? { code: iucn.code, label: iucn.category.replace(/_/g, " ").toLowerCase() } : null,
+    inat: t ? { url: `https://www.inaturalist.org/taxa/${t.id}`, common: t.preferred_common_name, group: t.iconic_taxon_name,
+                obs: t.observations_count, photo: t.default_photo?.medium_url, credit: t.default_photo?.attribution } : null,
+    wiki: wiki?.extract && wiki.type !== "disambiguation" ? { text: wiki.extract, url: wiki.content_urls?.desktop?.page } : null,
+  };
+}
+
+/* ============================== RENDER ============================== */
+const IUCN = { LC: ["Least concern", ""], NT: ["Near threatened", "warn"], VU: ["Vulnerable", "warn"], EN: ["Endangered", "danger"],
+  CR: ["Critically endangered", "danger"], EW: ["Extinct in the wild", "danger"], EX: ["Extinct", "danger"], DD: ["Data deficient", "warn"], NE: ["Not evaluated", "warn"] };
+const flag = (cc) => cc?.length === 2 ? String.fromCodePoint(...[...cc.toUpperCase()].map((c) => 127397 + c.charCodeAt())) : "";
+const nf = (n) => n == null ? "—" : n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1e4 ? Math.round(n / 1e3) + "k" : n.toLocaleString();
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+function ring(p) {
+  const r = 32, C = 2 * Math.PI * r, col = p >= .6 ? "var(--brand)" : p >= LOW_CONFIDENCE ? "var(--accent)" : "var(--warn)";
+  return `<div class="ring" title="BioCLIP 2 confidence"><svg width="76" height="76" viewBox="0 0 76 76">
+    <circle cx="38" cy="38" r="${r}" fill="none" stroke="var(--surface-2)" stroke-width="8"/>
+    <circle cx="38" cy="38" r="${r}" fill="none" stroke="${col}" stroke-width="8" stroke-linecap="round"
+      stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - p)}"/></svg><span>${Math.round(p * 100)}%</span><small>confidence</small></div>`;
+}
+
+function render(d) {
+  const f = d.facts, g = f.gbif;
+  const common = f.inat?.common || d.top.common;
+  const tax = g?.taxonomy || Object.fromEntries([...RANKS, "species"].filter((r) => d.top[r]).map((r) => [r, r === "species" ? d.top.species : d.top[r]]));
+  const ref = f.inat?.photo || d.sampleUrl;
+  const iucn = f.iucn && IUCN[f.iucn.code];
+  const out = $("resultCard");
+  out.innerHTML = `
+    <div class="hero">
+      <figure><img src="${photoURL}" alt="Your photo"><figcaption>Your photo</figcaption></figure>
+      <figure>${ref ? `<img src="${esc(ref)}" alt="Reference photo of ${esc(d.name)}"><figcaption>Reference</figcaption>` : ""}</figure>
+    </div>
+    <div class="pad">
+      <div class="title">
+        <div style="flex:1;min-width:0">
+          <p class="sci">${esc(d.name)}</p>
+          ${common ? `<p class="common">${esc(common)}</p>` : ""}
+        </div>
+        ${ring(d.confidence)}
+      </div>
+      <div class="badges">
+        ${!d.confident ? `<span class="badge warn">Unsure of exact species — showing genus</span>` : ""}
+        ${iucn ? `<span class="badge ${iucn[1]}">IUCN: ${iucn[0]}</span>` : ""}
+        ${f.inat?.group ? `<span class="badge">${esc(f.inat.group)}</span>` : ""}
+        ${g?.saudi ? `<span class="badge">🇸🇦 Recorded in Saudi Arabia</span>` : ""}
+        <span class="badge" style="background:var(--surface-2);color:var(--muted)">BioCLIP 2 · ${(d.ms / 1000).toFixed(1)}s</span>
+      </div>
+    </div>
+
+    <div class="section">
+      <p class="label">Classification</p>
+      <div class="tax">${Object.entries(tax).map(([k, v], i, a) =>
+        `<span class="t ${i === a.length - 1 ? "last" : ""}"><small>${k}</small>${k === "species" || k === "genus" ? `<i>${esc(v)}</i>` : esc(v)}</span>${i < a.length - 1 ? '<span class="arrow">›</span>' : ""}`).join("")}</div>
+    </div>
+
+    ${f.wiki ? `<div class="section"><p class="label">Description</p><p class="desc">${esc(f.wiki.text)}</p></div>` : ""}
+
+    ${g ? `<div class="section">
+      <p class="label">Records worldwide</p>
+      <div class="stats">
+        <div class="stat"><b>${nf(g.records)}</b><span>GBIF records</span></div>
+        <div class="stat"><b>${nf(f.inat?.obs)}</b><span>iNaturalist sightings</span></div>
+        <div class="stat"><b>${nf(g.saudi)}</b><span>records in 🇸🇦 Saudi Arabia</span></div>
+      </div>
+      ${g.countries.length ? `<div class="countries">${g.countries.map((c) => `<span>${flag(c.name)} ${c.name} · ${nf(c.count)}</span>`).join("")}</div>` : ""}
+    </div>` : ""}
+
+    <div class="section">
+      <p class="label">BioCLIP 2 — top ${d.candidates.length} guesses</p>
+      <div class="bars">${d.candidates.map((c) => `
+        <div class="bar"><span><i>${esc(c.species)}</i>${c.common ? ` <span style="color:var(--muted)">· ${esc(c.common)}</span>` : ""}</span>
+          <b>${(c.score * 100).toFixed(1)}%</b><div class="track"><div class="fill" style="width:${Math.max(1, c.score * 100)}%"></div></div></div>`).join("")}
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="links">
+        ${g ? `<a href="${g.url}" target="_blank" rel="noopener">GBIF ↗</a>` : ""}
+        ${f.inat ? `<a href="${f.inat.url}" target="_blank" rel="noopener">iNaturalist ↗</a>` : ""}
+        ${f.wiki?.url ? `<a href="${f.wiki.url}" target="_blank" rel="noopener">Wikipedia ↗</a>` : ""}
+      </div>
+      ${g?.scientificName ? `<p class="foot" style="margin:12px 0 0">Accepted name (GBIF): ${esc(g.scientificName)}</p>` : ""}
+      ${f.inat?.credit ? `<p class="foot" style="margin:4px 0 0">Reference photo: ${esc(f.inat.credit)}</p>` : ""}
+    </div>`;
+  show("resultCard");
+  out.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function addHistory(name, common) {
+  history.unshift({ name, common, url: photoURL, blob: photoBlob });
+  photoURL = URL.createObjectURL(photoBlob); // keep the history thumbnail alive
+  $("history").innerHTML = history.slice(0, 12).map((h, i) =>
+    `<button data-i="${i}" title="${esc(h.name)}"><img src="${h.url}" alt=""><i>${esc(h.name)}</i></button>`).join("");
+  $("history").querySelectorAll("button").forEach((b) => b.onclick = () => {
+    if (busy) return; const h = history[+b.dataset.i]; stopCamera(); setPhoto(h.blob); identify();
+  });
+  show("historyCard");
+}
+
+/* ============================== UI HELPERS ============================== */
+function show(id) { $(id).hidden = false; }
+function hide(id) { $(id).hidden = true; }
+function setStatus(kind, text) { $("dot").className = "dot " + kind; $("statusText").textContent = text; }
+function step(k) {
+  const order = ["connect", "model", "facts", "done"], at = order.indexOf(k);
+  document.querySelectorAll("#steps li").forEach((li) => {
+    const i = order.indexOf(li.dataset.k);
+    li.className = i < at ? "done" : i === at ? "active" : "";
+  });
+}
+function showError(msg) {
+  const out = $("resultCard");
+  out.innerHTML = `<div class="pad"><div class="err">⚠️ ${esc(msg)}</div></div>`;
+  show("resultCard");
+}
+
+// Warm the model up in the background so the first photo is faster
+getClient().then(() => setStatus("ok", "Model ready")).catch(() => setStatus("", "Model idle"));
+
+// expose for automated tests
+window.__speciesLens = { parseLabel };
+</script>
+</body>
+</html>

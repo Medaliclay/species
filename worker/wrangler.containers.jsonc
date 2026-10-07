@@ -1,0 +1,22 @@
+// Option B: model runs in Cloudflare Containers (needs Workers Paid plan + Docker installed)
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "species-id",
+  "main": "src/container.js",
+  "compatibility_date": "2026-09-01",
+  "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": ["/api/*"] },
+  "ai": { "binding": "AI" },
+  "containers": [
+    {
+      "class_name": "BioclipContainer",
+      "image": "../model-server/Dockerfile",
+      "instance_type": "standard-3",   // 2 vCPU, 8 GB RAM — BioCLIP 2 needs ~5 GB
+      "max_instances": 2
+    }
+  ],
+  "durable_objects": {
+    "bindings": [{ "name": "BIOCLIP", "class_name": "BioclipContainer" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["BioclipContainer"] }],
+  "observability": { "enabled": true }
+}

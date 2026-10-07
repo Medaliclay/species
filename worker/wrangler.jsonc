@@ -1,0 +1,14 @@
+// Option A (default): model hosted on a free Hugging Face Space
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "species-id",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-01",
+  "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": ["/api/*"] },
+  "ai": { "binding": "AI" },           // optional: Workers AI study-notes summary
+  "vars": {
+    "MODEL_URL": "https://YOUR-HF-USERNAME-bioclip2-api.hf.space"
+  },
+  // secret (not in this file):  npx wrangler secret put MODEL_TOKEN
+  "observability": { "enabled": true }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "species-lens-e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:live": "LIVE=1 playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56"
+  }
+}

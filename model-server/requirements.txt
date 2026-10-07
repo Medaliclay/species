@@ -1,0 +1,4 @@
+pybioclip==2.1.6
+fastapi==0.115.*
+uvicorn[standard]==0.32.*
+pillow
